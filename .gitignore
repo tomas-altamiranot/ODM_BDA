@@ -1,0 +1,18 @@
+# Entorno virtual: cada quien crea el suyo, no se comparte
+.venv/
+venv/
+
+# Caché de Python: archivos temporales que genera al ejecutar
+__pycache__/
+*.pyc
+
+# Configuración personal del editor
+.idea/
+.vscode/
+
+# Variables de entorno (contraseñas, URLs de conexión)
+.env
+
+# Basura de Windows
+Thumbs.db
+desktop.ini
