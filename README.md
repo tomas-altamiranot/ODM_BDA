@@ -194,69 +194,67 @@ usuario, que es la decisión correcta en un sistema de auditoría.
 
 ---
 
-## 4. Guía de pruebas
+## 4. Guía de pruebas y evidencia de ejecución
 
-Casos verificados contra una instancia real de MongoDB.
+Todas las capturas corresponden a ejecuciones reales contra MongoDB y están en
+la carpeta [`evidencias/`](evidencias/).
 
 ### Operaciones CRUD — Usuarios
 
-| # | Operación | Resultado |
+| Operación | Resultado | Evidencia |
 |---|---|---|
-| 1 | Crear `ana@mail.com` y `luis@mail.com` | Ambos registrados |
-| 2 | Listar todos | Devuelve los 2, ordenados por email |
-| 3 | Buscar por email | Devuelve el usuario y su fecha de registro |
-| 4 | Modificar apellido de Ana | `Ana Lopez` → `Ana Lopez Ruiz` |
-| 5 | Eliminar `luis@mail.com` | Eliminado tras liberar sus artículos |
+| **Create** — registrar usuario | Usuario creado con su fecha automática | ![Crear usuario](evidencias/01-usuario-crear.png) |
+| **Read** — listar todos | Devuelve los usuarios ordenados por email | ![Consultar usuarios](evidencias/02-usuario-consultar.png) |
+| **Update** — modificar nombre y apellido | `tomas alt` → `tommyy alto` | ![Modificar usuario](evidencias/03-usuario-modificar.png) |
+| **Delete** — eliminar por email | Eliminado tras liberar sus artículos | ![Eliminar usuario](evidencias/04-usuario-eliminar.png) |
 
 ### Operaciones CRUD — Artículos
 
-| # | Operación | Resultado |
+| Operación | Resultado | Evidencia |
 |---|---|---|
-| 6 | Crear artículo con usuario válido | Registrado con su referencia |
-| 7 | Listar todos | Devuelve el artículo con el email del responsable |
-| 8 | Buscar por ID | Muestra el detalle completo |
-| 9 | Listar por usuario responsable | Filtra correctamente |
-| 10 | Modificar marca y reasignar responsable | Ambos campos actualizados |
-| 11 | Eliminar por ID | Eliminado correctamente |
+| **Create** — registrar artículo | Creado con la referencia a su responsable | ![Crear artículo](evidencias/05-articulo-crear.png) |
+| **Read** — listar todos | Muestra el email del usuario que lo modificó | ![Consultar artículos](evidencias/06-articulo-consultar.png) |
+| **Update** — modificar por ID | Cambia nombre y descripción; la marca en blanco conserva su valor | ![Modificar artículo](evidencias/07-articulo-modificar.png) |
+| **Delete** — eliminar por ID | Eliminado correctamente | ![Eliminar artículo](evidencias/08-articulo-eliminar.png) |
 
 ### Casos de fallo controlado
 
-Ninguno interrumpe la ejecución: el programa muestra el motivo y continúa.
+Ninguno interrumpe la ejecución: el programa explica el motivo y vuelve al menú.
 
-**A. Artículo con usuario inexistente**
+**A. Artículo asociado a un usuario inexistente**
+
+Es la prueba de la integridad referencial implementada en código. MongoDB
+habría aceptado la referencia sin protestar; la validación previa lo impide.
+
+![Fallo usuario inexistente](evidencias/09-fallo-usuario-inexistente.png)
+
 ```
 >> No se pudo registrar. No existe ningun usuario con el email
-   'fantasma@mail.com'. Registra primero al usuario responsable.
+   'nohay@mail.com'. Registra primero al usuario responsable.
 ```
 
-**B. Artículo con nombre vacío (solo espacios)**
+**B. Artículo con nombre vacío**
+
+El nombre se compone únicamente de espacios. Para Python no es una cadena
+vacía, pero `.strip()` lo detecta antes de llegar a la base.
+
+![Fallo nombre vacío](evidencias/10-fallo-nombre-vacio.png)
+
 ```
 >> No se pudo registrar. El nombre del articulo no puede estar vacio
    ni ser solo espacios.
 ```
 
-**C. Email de usuario duplicado**
-```
->> No se pudo registrar. Ya existe un usuario registrado con el email
-   'ana@mail.com'.
-```
+### Otros casos verificados
 
-**D. Eliminar usuario con artículos asociados**
-```
->> No se puede eliminar 'luis@mail.com': tiene articulos asociados.
-   Reasigna o elimina esos articulos primero.
-```
+Comprobados durante el desarrollo; no interrumpen la ejecución.
 
-**E. Entrada no numérica en el menú**
-```
-Opcion: hola
->> Opcion no valida. Elige una de: 0, 1, 2
-```
-
-**F. ID de artículo con formato inválido**
-```
->> No existe ningun articulo con el id 'esto-no-es-un-id'.
-```
+| Caso | Mensaje del sistema |
+|---|---|
+| Email de usuario duplicado | `Ya existe un usuario registrado con el email 'ana@mail.com'.` |
+| Eliminar usuario con artículos asociados | `No se puede eliminar 'luis@mail.com': tiene articulos asociados.` |
+| Entrada no numérica en el menú | `Opcion no valida. Elige una de: 0, 1, 2` |
+| ID de artículo con formato inválido | `No existe ningun articulo con el id 'esto-no-es-un-id'.` |
 
 ---
 
