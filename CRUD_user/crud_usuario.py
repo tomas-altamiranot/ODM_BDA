@@ -1,55 +1,122 @@
-from mongoengine import NotUniqueError
-from ..modelos import User
+"""Logica de negocio para la coleccion de usuarios.
 
-#Función para crear un nuevo usuario en la base de datos
-def create_user(email, first_name, last_name,created_at): #Usa los parámetros definidos en el modelo User
-        new_user= User(
-            email=User.email,
-            first_name=User.first_name,
-            last_name=User.last_name,
-            created_at =User.timestamp
-        )
-        try:
-            #Intenta guardar el nuevo usuario en la base de datos
-            saved_user=new_user.save()
-            return saved_user
-        except NotUniqueError:
-            print("Ya existe un usuario con este correo electrónico.")
-            return None
-        except Exception as e:
-            print (f"Error al crear el usuario: {e}")
-            return None
-#Función para leer todos los usuarios de la base de datos
-def leer_usuarios():
+Cada funcion valida sus datos antes de tocar la base y devuelve un resultado
+que la capa de interfaz puede interpretar, en lugar de imprimir directamente.
+"""
+
+from mongoengine.errors import DoesNotExist, NotUniqueError, ValidationError
+
+from modelos import User
+
+
+def crear_usuario(email, nombre, apellido):
+    """Registra un usuario nuevo.
+
+    Args:
+        email: correo del usuario, debe ser unico en la coleccion.
+        nombre: nombre de pila.
+        apellido: apellido.
+
+    Returns:
+        (True, usuario) si se creo; (False, mensaje de error) si no.
+    """
+    email = (email or "").strip().lower()
+    nombre = (nombre or "").strip()
+    apellido = (apellido or "").strip()
+
+    if not email:
+        return False, "El email no puede estar vacio."
+    if not nombre:
+        return False, "El nombre no puede estar vacio."
+
     try:
-        usuarios = User.objects()
-        if not usuarios:
-            print("No hay usuarios registrados.")
-            return
-        print("\n--- Lista de Usuarios ---")
-        for u in usuarios:
-            print(f"Email: {u.email} | Nombre: {u.first_name} {u.last_name}")
-    except Exception as e:
-        print(f"Error al leer usuarios: {e}")
-#Función para actualizar un usuario existente en la base de datos
-def actualizar_usuario(email_actual, nuevo_first_name, nuevo_last_name):
+        usuario = User(email=email, nombre=nombre, apellido=apellido)
+        usuario.save()
+        return True, usuario
+    except NotUniqueError:
+        return False, f"Ya existe un usuario registrado con el email '{email}'."
+    except ValidationError as e:
+        return False, f"Datos invalidos: {e}"
+
+
+def listar_usuarios():
+    """Devuelve todos los usuarios ordenados por email."""
+    return list(User.objects.order_by("email"))
+
+
+def buscar_usuario(email):
+    """Busca un usuario por su email.
+
+    Returns:
+        El documento User, o None si no existe.
+    """
+    email = (email or "").strip().lower()
+    if not email:
+        return None
     try:
-        usuario = User.objects.get(email=email_actual)
-        usuario.first_name = nuevo_first_name.strip() if nuevo_first_name.strip() else usuario.first_name
-        usuario.last_name = nuevo_last_name.strip() if nuevo_last_name.strip() else usuario.last_name
-        return usuario.save()
+        return User.objects.get(email=email)
     except DoesNotExist:
-        print("Error: No se encontró ningún usuario con ese email.")
-    except Exception as e:
-        print(f"Error al actualizar usuario: {e}")
-    return None
-#Función para eliminar un usuario de la base de datos
+        return None
+
+
+def existe_usuario(email):
+    """Indica si hay un usuario con ese email.
+
+    Lo usa el modulo de articulos para validar la integridad referencial
+    antes de guardar una referencia.
+    """
+    return buscar_usuario(email) is not None
+
+
+def actualizar_usuario(email, nuevo_nombre=None, nuevo_apellido=None):
+    """Modifica nombre y/o apellido de un usuario existente.
+
+    Los campos que lleguen vacios se dejan con su valor actual.
+
+    Returns:
+        (True, usuario) si se actualizo; (False, mensaje) si no.
+    """
+    usuario = buscar_usuario(email)
+    if usuario is None:
+        return False, f"No existe ningun usuario con el email '{email}'."
+
+    nuevo_nombre = (nuevo_nombre or "").strip()
+    nuevo_apellido = (nuevo_apellido or "").strip()
+
+    if nuevo_nombre:
+        usuario.nombre = nuevo_nombre
+    if nuevo_apellido:
+        usuario.apellido = nuevo_apellido
+
+    try:
+        usuario.save()
+        return True, usuario
+    except ValidationError as e:
+        return False, f"Datos invalidos: {e}"
+
+
 def eliminar_usuario(email):
+    """Elimina un usuario.
+
+    La regla reverse_delete_rule=DENY del modelo Articulo hace que MongoEngine
+    rechace el borrado si el usuario todavia tiene articulos asociados, para
+    no dejar referencias rotas.
+
+    Returns:
+        (True, mensaje) si se elimino; (False, mensaje) si no.
+    """
+    from mongoengine.errors import OperationError
+
+    usuario = buscar_usuario(email)
+    if usuario is None:
+        return False, f"No existe ningun usuario con el email '{email}'."
+
     try:
-        usuario = User.objects.get(email=email)
         usuario.delete()
-        print("Usuario eliminado con éxito.")
-    except DoesNotExist:
-        print("Error: El usuario no existe.")
-    except Exception as e:
-        print(f"Error al eliminar usuario: {e}")
+        return True, f"Usuario '{email}' eliminado correctamente."
+    except OperationError:
+        return (
+            False,
+            f"No se puede eliminar '{email}': tiene articulos asociados. "
+            "Reasigna o elimina esos articulos primero.",
+        )
