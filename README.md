@@ -282,4 +282,6 @@ un solo dato sin volver a teclear los demás.
 ## Integrantes
 
 - Tomás Altamirano
-- Oswaldo
+- Oswaldo Lucio
+- Stephanie Bayona
+- Isaac Padilla
